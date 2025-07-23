@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,7 +10,7 @@ public class ForcepsController : MonoBehaviour
     [SerializeField]
     private InputActionReference _gripAction;
 
-    [Header("Forceps Clamps")]
+    [Header("Forceps Parts")]
     [SerializeField]
     private Transform _upperClamp;
     [SerializeField]
@@ -86,7 +87,7 @@ public class ForcepsController : MonoBehaviour
         _upperClampDefaultRot = Quaternion.Euler(-45f, -90f, 90f);
 
         // 2) lower opened: (-45, 90, -90)
-        _lowerClampDefaultRot = Quaternion.Euler(-45f,  90f, -90f);
+        _lowerClampDefaultRot = Quaternion.Euler(-45f, 90f, -90f);
 
         _upperClamp.localRotation = _upperClampDefaultRot;
         _lowerClamp.localRotation = _lowerClampDefaultRot;
@@ -108,7 +109,6 @@ public class ForcepsController : MonoBehaviour
         Debug.Log("Grip released - Forceps opening smoothly.");
     }
 
-
     private void StartSmoothAnimation(bool closing)
     {
         // Stop any existing animation
@@ -125,15 +125,15 @@ public class ForcepsController : MonoBehaviour
     {
         _isAnimating = true;
 
-        // Determine start rotations
-        Quaternion upperStartRot = _upperClamp.localRotation;
-        Quaternion lowerStartRot = _lowerClamp.localRotation;
+        // Determine start rotations for clamps only
+        Quaternion upperClampStartRot = _upperClamp.localRotation;
+        Quaternion lowerClampStartRot = _lowerClamp.localRotation;
 
         if (closing)
         {
-            // Define a reasonable closed position (can be adjusted)
-            Quaternion upperTargetRot = Quaternion.Euler(-90f, -90f, 90f);  //close entirely
-            Quaternion lowerTargetRot = Quaternion.Euler(-90f, 90f, -90f);  //close entirely
+            // Define closed positions for clamps
+            Quaternion upperClampTargetRot = Quaternion.Euler(-90f, -90f, 90f);  //close entirely
+            Quaternion lowerClampTargetRot = Quaternion.Euler(-90f, 90f, -90f);  //close entirely
 
             float elapsedTime = 0f;
 
@@ -146,9 +146,9 @@ public class ForcepsController : MonoBehaviour
                 // Apply animation curve for easing
                 float curveValue = _animationCurve.Evaluate(normalizedTime);
 
-                // Interpolate rotations toward closed position
-                _upperClamp.localRotation = Quaternion.Slerp(upperStartRot, upperTargetRot, curveValue);
-                _lowerClamp.localRotation = Quaternion.Slerp(lowerStartRot, lowerTargetRot, curveValue);
+                // Interpolate clamp rotations toward closed position
+                _upperClamp.localRotation = Quaternion.Slerp(upperClampStartRot, upperClampTargetRot, curveValue);
+                _lowerClamp.localRotation = Quaternion.Slerp(lowerClampStartRot, lowerClampTargetRot, curveValue);
 
                 yield return null;
             }
@@ -165,8 +165,8 @@ public class ForcepsController : MonoBehaviour
         else
         {
             // For opening animation, return to default positions
-            Quaternion upperEndRot = _upperClampDefaultRot;
-            Quaternion lowerEndRot = _lowerClampDefaultRot;
+            Quaternion upperClampEndRot = _upperClampDefaultRot;
+            Quaternion lowerClampEndRot = _lowerClampDefaultRot;
 
             float elapsedTime = 0f;
 
@@ -179,15 +179,15 @@ public class ForcepsController : MonoBehaviour
                 float curveValue = _animationCurve.Evaluate(normalizedTime);
 
                 // Interpolate rotations back to default (open) positions
-                _upperClamp.localRotation = Quaternion.Slerp(upperStartRot, upperEndRot, curveValue);
-                _lowerClamp.localRotation = Quaternion.Slerp(lowerStartRot, lowerEndRot, curveValue);
+                _upperClamp.localRotation = Quaternion.Slerp(upperClampStartRot, upperClampEndRot, curveValue);
+                _lowerClamp.localRotation = Quaternion.Slerp(lowerClampStartRot, lowerClampEndRot, curveValue);
 
                 yield return null;
             }
 
             // Ensure final positions are exact
-            _upperClamp.localRotation = upperEndRot;
-            _lowerClamp.localRotation = lowerEndRot;
+            _upperClamp.localRotation = upperClampEndRot;
+            _lowerClamp.localRotation = lowerClampEndRot;
 
             Debug.Log("Forceps opened to default position");
         }
@@ -198,7 +198,6 @@ public class ForcepsController : MonoBehaviour
 
     public bool IsGripPressed => _isGripPressed;
     public bool IsAnimating => _isAnimating;
-
 
     void OnDestroy()
     {
