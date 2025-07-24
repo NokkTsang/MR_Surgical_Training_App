@@ -65,6 +65,9 @@ public class CustomXRDirectInteractor : XRDirectInteractor
     private Transform m_CurrentClosestAttachTransform;
     private float m_LastAttachTransformUpdateTime;
     private Dictionary<IXRInteractable, Transform> m_InteractableAttachCache = new Dictionary<IXRInteractable, Transform>();
+    
+    // Track currently grabbed interactables to prevent recalculation during grab
+    private Dictionary<IXRInteractable, Transform> m_GrabbedInteractableAttachTransforms = new Dictionary<IXRInteractable, Transform>();
 
     /// <summary>
     /// Initialize multi-attach functionality
@@ -76,6 +79,10 @@ public class CustomXRDirectInteractor : XRDirectInteractor
         // Initialize multi-attach cache
         if (m_InteractableAttachCache == null)
             m_InteractableAttachCache = new Dictionary<IXRInteractable, Transform>();
+
+        // Initialize grabbed interactables tracking
+        if (m_GrabbedInteractableAttachTransforms == null)
+            m_GrabbedInteractableAttachTransforms = new Dictionary<IXRInteractable, Transform>();
 
         if (m_ShowDebugInfo)
             Debug.Log($"CustomXRDirectInteractor initialized with {m_AttachTransforms.Count} attach transforms.");
@@ -102,7 +109,18 @@ public class CustomXRDirectInteractor : XRDirectInteractor
             return singleTransform ?? base.GetAttachTransform(interactable);
         }
 
-        // Check if we need to update based on frequency
+        // Check if this interactable is currently being grabbed
+        // If so, return the locked attach transform to prevent switching during grab
+        if (interactable != null && m_GrabbedInteractableAttachTransforms.TryGetValue(interactable, out var grabbedTransform))
+        {
+            if (m_ShowDebugInfo)
+                Debug.Log($"Using locked attach transform during grab: {grabbedTransform.name} for {interactable.transform.name}");
+            
+            m_CurrentClosestAttachTransform = grabbedTransform;
+            return grabbedTransform ?? base.GetAttachTransform(interactable);
+        }
+
+        // Check if we need to update based on frequency (only for non-grabbed interactables)
         bool shouldUpdate = Time.time - m_LastAttachTransformUpdateTime >= m_AttachTransformUpdateFrequency;
 
         // Try to get cached result for this specific interactable
@@ -216,6 +234,52 @@ public class CustomXRDirectInteractor : XRDirectInteractor
     }
 
     /// <summary>
+    /// Handle when grab starts - lock the attach transform for this interactable
+    /// </summary>
+    /// <param name="args">Selection event arguments</param>
+    protected override void OnSelectEntered(SelectEnterEventArgs args)
+    {
+        base.OnSelectEntered(args);
+        
+        var interactable = args.interactableObject;
+        if (interactable != null && m_UseMultipleAttachTransforms)
+        {
+            // Get the current attach transform and lock it for this grab session
+            var currentTransform = GetAttachTransform(interactable);
+            if (currentTransform != null)
+            {
+                m_GrabbedInteractableAttachTransforms[interactable] = currentTransform;
+                
+                if (m_ShowDebugInfo)
+                    Debug.Log($"Locked attach transform {currentTransform.name} for grabbed interactable {interactable.transform.name}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handle when grab ends - unlock the attach transform for this interactable
+    /// </summary>
+    /// <param name="args">Selection event arguments</param>
+    protected override void OnSelectExited(SelectExitEventArgs args)
+    {
+        base.OnSelectExited(args);
+        
+        var interactable = args.interactableObject;
+        if (interactable != null)
+        {
+            // Remove the locked attach transform
+            if (m_GrabbedInteractableAttachTransforms.Remove(interactable))
+            {
+                if (m_ShowDebugInfo)
+                    Debug.Log($"Unlocked attach transform for released interactable {interactable.transform.name}");
+            }
+            
+            // Clear cache so it will recalculate on next interaction
+            ClearAttachTransformCache(interactable);
+        }
+    }
+
+    /// <summary>
     /// Clear all attach transform cache
     /// </summary>
     public void ClearAllAttachTransformCache()
@@ -224,10 +288,16 @@ public class CustomXRDirectInteractor : XRDirectInteractor
         {
             m_InteractableAttachCache.Clear();
         }
+        
+        if (m_GrabbedInteractableAttachTransforms != null)
+        {
+            m_GrabbedInteractableAttachTransforms.Clear();
+        }
+        
         m_CurrentClosestAttachTransform = null;
 
         if (m_ShowDebugInfo)
-            Debug.Log("Cleared all attach transform cache.");
+            Debug.Log("Cleared all attach transform cache and grab locks.");
     }
 
     /// <summary>
@@ -285,6 +355,45 @@ public class CustomXRDirectInteractor : XRDirectInteractor
     }
 
     /// <summary>
+    /// Check if an interactable is currently being grabbed (has locked attach transform)
+    /// </summary>
+    /// <param name="interactable">Interactable to check</param>
+    /// <returns>True if the interactable is currently grabbed</returns>
+    public bool IsInteractableGrabbed(IXRInteractable interactable)
+    {
+        return interactable != null && m_GrabbedInteractableAttachTransforms.ContainsKey(interactable);
+    }
+
+    /// <summary>
+    /// Get the locked attach transform for a grabbed interactable
+    /// </summary>
+    /// <param name="interactable">Grabbed interactable</param>
+    /// <returns>Locked attach transform, or null if not grabbed</returns>
+    public Transform GetLockedAttachTransform(IXRInteractable interactable)
+    {
+        if (interactable != null && m_GrabbedInteractableAttachTransforms.TryGetValue(interactable, out var lockedTransform))
+        {
+            return lockedTransform;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Force unlock an interactable's attach transform (useful for manual release)
+    /// </summary>
+    /// <param name="interactable">Interactable to unlock</param>
+    public void ForceUnlockInteractable(IXRInteractable interactable)
+    {
+        if (interactable != null && m_GrabbedInteractableAttachTransforms.Remove(interactable))
+        {
+            ClearAttachTransformCache(interactable);
+            
+            if (m_ShowDebugInfo)
+                Debug.Log($"Force unlocked attach transform for interactable {interactable.transform.name}");
+        }
+    }
+
+    /// <summary>
     /// Clear cache when component is enabled
     /// </summary>
     protected override void OnEnable()
@@ -316,7 +425,7 @@ public class CustomXRDirectInteractor : XRDirectInteractor
         {
             if (attachTransform != null)
             {
-                UnityEditor.Handles.DrawWireDisc(attachTransform.position, attachTransform.up, 0.005f);
+                UnityEditor.Handles.DrawWireDisc(attachTransform.position, attachTransform.up, 0.003f);
             }
         }
 
@@ -324,7 +433,7 @@ public class CustomXRDirectInteractor : XRDirectInteractor
         if (m_CurrentClosestAttachTransform != null)
         {
             UnityEditor.Handles.color = Color.red;
-            UnityEditor.Handles.DrawWireDisc(m_CurrentClosestAttachTransform.position, m_CurrentClosestAttachTransform.up, 0.005f);
+            UnityEditor.Handles.DrawWireDisc(m_CurrentClosestAttachTransform.position, m_CurrentClosestAttachTransform.up, 0.003f);
         }
     }
 
