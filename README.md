@@ -1,7 +1,7 @@
 # Mixed Reality (MR) Surgical Training App for Meta Quest
 
 <div align="center">
-    <img src="media/meta-quest.svg" alt="Meta Quest" width="200"/>
+    <img src="./media/meta-quest.svg" alt="Meta Quest" width="200"/>
 </div>
 
 This is a Unity-based mixed reality application for surgical training. This project demonstrates advanced articulated tool manipulation, trigger-based physics, and smooth animation systems specifically designed for Meta Quest devices in medical training scenarios.
@@ -16,7 +16,7 @@ This is a Unity-based mixed reality application for surgical training. This proj
 The laparoscopic forceps module represents one of core functionalities of this training application.
 
 <div align="center">
-    <img src="media/laparoscopic-forceps.jpg" alt="laparoscopic forceps" width="200"/>
+    <img src="./media/laparoscopic-forceps.jpg" alt="laparoscopic forceps" width="200"/>
 </div>
 
 ### further surgical tools ...
