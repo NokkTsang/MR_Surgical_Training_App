@@ -16,6 +16,15 @@ public class ForcepsController : MonoBehaviour
     [SerializeField]
     private Transform _lowerClamp;
 
+    [Header("Interaction Settings")]
+    [SerializeField]
+    [Tooltip("List of tags that this forceps can interact with. If empty, interacts with all objects.")]
+    private List<string> _interactableTags = new List<string> { "GrabbableSphere" };
+
+    [SerializeField]
+    [Tooltip("Enable debug logs for tag checking")]
+    private bool _showTagDebugInfo = false;
+
     [Header("Animation Settings")]
     [SerializeField]
     [Range(0.1f, 2.0f)]
@@ -37,31 +46,90 @@ public class ForcepsController : MonoBehaviour
     private bool _isObjectInUpperTrigger = false;
     private bool _isObjectInLowerTrigger = false;
 
+    /// <summary>
+    /// Check if the object has an interactable tag
+    /// </summary>
+    /// <param name="obj">GameObject to check</param>
+    /// <returns>True if the object can be interacted with</returns>
+    private bool IsObjectInteractable(GameObject obj)
+    {
+        if (obj == null) return false;
+
+        // If no tags are specified, allow interaction with all objects
+        if (_interactableTags == null || _interactableTags.Count == 0)
+        {
+            if (_showTagDebugInfo)
+                Debug.Log($"No tag restrictions - allowing interaction with {obj.name}");
+            return true;
+        }
+
+        // Check if object has any of the allowed tags
+        bool isInteractable = _interactableTags.Contains(obj.tag);
+
+        if (_showTagDebugInfo)
+        {
+            if (isInteractable)
+                Debug.Log($"Object {obj.name} with tag '{obj.tag}' is interactable");
+            else
+                Debug.Log($"Object {obj.name} with tag '{obj.tag}' is NOT interactable. Allowed tags: [{string.Join(", ", _interactableTags)}]");
+        }
+
+        return isInteractable;
+    }
+
     public void OnUpperTriggerEnter(GameObject other)
     {
+        // Check if the object is interactable based on its tag
+        if (!IsObjectInteractable(other))
+        {
+            if (_showTagDebugInfo)
+                Debug.Log($"Upper clamp ignoring object {other.name} - not interactable");
+            return;
+        }
+
         // Handle upper clamp trigger enter logic
-        Debug.Log($"Upper clamp triggered by: {other.name}");
+        Debug.Log($"Upper clamp triggered by interactable object: {other.name} (tag: {other.tag})");
         _isObjectInUpperTrigger = true;
     }
 
     public void OnUpperTriggerExit(GameObject other)
     {
+        // Check if the object was interactable
+        if (!IsObjectInteractable(other))
+        {
+            return;
+        }
+
         // Handle upper clamp trigger exit logic
-        Debug.Log($"Upper clamp exited by: {other.name}");
+        Debug.Log($"Upper clamp exited by interactable object: {other.name} (tag: {other.tag})");
         _isObjectInUpperTrigger = false;
     }
 
     public void OnLowerTriggerEnter(GameObject other)
     {
+        // Check if the object is interactable based on its tag
+        if (!IsObjectInteractable(other))
+        {
+            if (_showTagDebugInfo)
+                Debug.Log($"Lower clamp ignoring object {other.name} - not interactable");
+            return;
+        }
+
         // Handle lower clamp trigger enter logic
-        Debug.Log($"Lower clamp triggered by: {other.name}");
+        Debug.Log($"Lower clamp triggered by interactable object: {other.name} (tag: {other.tag})");
         _isObjectInLowerTrigger = true;
     }
 
     public void OnLowerTriggerExit(GameObject other)
     {
+        // Check if the object was interactable
+        if (!IsObjectInteractable(other))
+        {
+            return;
+        }
+
         // Handle lower clamp trigger exit logic
-        Debug.Log($"Lower clamp exited by: {other.name}");
+        Debug.Log($"Lower clamp exited by interactable object: {other.name} (tag: {other.tag})");
         _isObjectInLowerTrigger = false;
     }
 
@@ -199,6 +267,69 @@ public class ForcepsController : MonoBehaviour
     public bool IsGripPressed => _isGripPressed;
     public bool IsAnimating => _isAnimating;
 
+    /// <summary>
+    /// Get the list of interactable tags
+    /// </summary>
+    public List<string> InteractableTags => new List<string>(_interactableTags);
+
+    /// <summary>
+    /// Add a new interactable tag
+    /// </summary>
+    /// <param name="tag">Tag to add</param>
+    public void AddInteractableTag(string tag)
+    {
+        if (!string.IsNullOrEmpty(tag) && !_interactableTags.Contains(tag))
+        {
+            _interactableTags.Add(tag);
+            if (_showTagDebugInfo)
+                Debug.Log($"Added interactable tag: {tag}");
+        }
+    }
+
+    /// <summary>
+    /// Remove an interactable tag
+    /// </summary>
+    /// <param name="tag">Tag to remove</param>
+    public void RemoveInteractableTag(string tag)
+    {
+        if (_interactableTags.Remove(tag))
+        {
+            if (_showTagDebugInfo)
+                Debug.Log($"Removed interactable tag: {tag}");
+        }
+    }
+
+    /// <summary>
+    /// Clear all interactable tags (allows interaction with all objects)
+    /// </summary>
+    public void ClearInteractableTags()
+    {
+        _interactableTags.Clear();
+        if (_showTagDebugInfo)
+            Debug.Log("Cleared all interactable tags - now interacts with all objects");
+    }
+
+    /// <summary>
+    /// Set the list of interactable tags
+    /// </summary>
+    /// <param name="tags">New list of tags</param>
+    public void SetInteractableTags(List<string> tags)
+    {
+        _interactableTags = tags ?? new List<string>();
+        if (_showTagDebugInfo)
+            Debug.Log($"Set interactable tags to: [{string.Join(", ", _interactableTags)}]");
+    }
+
+    /// <summary>
+    /// Check if a specific tag is in the interactable list
+    /// </summary>
+    /// <param name="tag">Tag to check</param>
+    /// <returns>True if the tag is interactable</returns>
+    public bool IsTagInteractable(string tag)
+    {
+        return _interactableTags.Contains(tag);
+    }
+
     void OnDestroy()
     {
         if (_gripAction != null)
@@ -213,4 +344,30 @@ public class ForcepsController : MonoBehaviour
             StopCoroutine(_currentAnimation);
         }
     }
+
+#if UNITY_EDITOR
+    /// <summary>
+    /// Validate configuration in editor
+    /// </summary>
+    private void OnValidate()
+    {
+        // Check if tags list contains invalid entries
+        if (_interactableTags != null)
+        {
+            for (int i = _interactableTags.Count - 1; i >= 0; i--)
+            {
+                if (string.IsNullOrEmpty(_interactableTags[i]))
+                {
+                    Debug.LogWarning($"Forceps Controller has empty tag entry at index {i}. Consider removing it.", this);
+                }
+            }
+        }
+
+        // Warn if no interactable tags are set
+        if (_interactableTags == null || _interactableTags.Count == 0)
+        {
+            Debug.LogWarning("Forceps Controller has no interactable tags set. It will interact with all objects.", this);
+        }
+    }
+#endif
 }
