@@ -437,7 +437,7 @@ Transform:
   m_GameObject: {fileID: 128008266}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.458, y: 0.111, z: 0}
+  m_LocalPosition: {x: 0.459, y: 0.111, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -778,7 +778,7 @@ CapsuleCollider:
   m_Radius: 0.0025
   m_Height: 0.02
   m_Direction: 1
-  m_Center: {x: 0.461, y: 0.111, z: 0}
+  m_Center: {x: 0.462, y: 0.111, z: 0}
 --- !u!114 &163852841
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -921,7 +921,7 @@ CapsuleCollider:
   m_Radius: 0.0025
   m_Height: 0.015
   m_Direction: 1
-  m_Center: {x: 0.458, y: 0.111, z: 0}
+  m_Center: {x: 0.4585, y: 0.111, z: 0}
 --- !u!1001 &207147540
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1195,7 +1195,7 @@ MonoBehaviour:
   _interactableTags:
   - GrabbableSphere
   _showTagDebugInfo: 0
-  _animationDuration: 0.1
+  _animationDuration: 0.15
   _animationCurve:
     serializedVersion: 2
     m_Curve:
@@ -1905,7 +1905,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
@@ -2289,7 +2289,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
@@ -2575,7 +2575,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
@@ -3002,7 +3002,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
@@ -3154,12 +3154,12 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.008
+      value: 0.007
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.008
+      value: 0.007
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
@@ -4235,7 +4235,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
@@ -4416,7 +4416,7 @@ Transform:
   m_GameObject: {fileID: 1385190798}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.461, y: 0.111, z: 0}
+  m_LocalPosition: {x: 0.463, y: 0.111, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -4433,12 +4433,12 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.008
+      value: 0.007
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.008
+      value: 0.007
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
@@ -4726,7 +4726,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
@@ -4934,7 +4934,13 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 1898984682}
   m_PrefabAsset: {fileID: 0}
---- !u!64 &1825818816
+--- !u!4 &1825818819 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
+    type: 3}
+  m_PrefabInstance: {fileID: 1898984682}
+  m_PrefabAsset: {fileID: 0}
+--- !u!64 &1825818822
 MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -4956,12 +4962,6 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 2534964839176971238, guid: 34f50e0be802c844aae7ee99728ada94, type: 3}
---- !u!4 &1825818819 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
-    type: 3}
-  m_PrefabInstance: {fileID: 1898984682}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1847989382
 GameObject:
   m_ObjectHideFlags: 0
@@ -5113,12 +5113,12 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.008
+      value: 0.007
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.008
+      value: 0.007
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
@@ -5192,7 +5192,7 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 34f50e0be802c844aae7ee99728ada94,
         type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1825818816}
+      addedObject: {fileID: 1825818822}
   m_SourcePrefab: {fileID: 100100000, guid: 34f50e0be802c844aae7ee99728ada94, type: 3}
 --- !u!1 &1964602097
 GameObject:
@@ -5324,7 +5324,7 @@ MonoBehaviour:
   m_MatchAttachRotation: 1
   m_SnapToColliderVolume: 1
   m_ReinitializeDynamicAttachEverySingleGrab: 1
-  m_AttachEaseInTime: 0.15
+  m_AttachEaseInTime: 0.1
   m_MovementType: 2
   m_VelocityDamping: 1
   m_VelocityScale: 1
