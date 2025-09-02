@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - GrabbableSphere
+  - Rope
   layers:
   - Default
   - TransparentFX

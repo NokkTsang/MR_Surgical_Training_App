@@ -19,7 +19,7 @@ public class ForcepsController : MonoBehaviour
     [Header("Interaction Settings")]
     [SerializeField]
     [Tooltip("List of tags that this forceps can interact with. If empty, interacts with all objects.")]
-    private List<string> _interactableTags = new List<string> { "GrabbableSphere" };
+    private List<string> _interactableTags = new List<string> { "GrabbableSphere", "Rope" };
 
     [SerializeField]
     [Tooltip("Enable debug logs for tag checking")]
@@ -53,10 +53,22 @@ public class ForcepsController : MonoBehaviour
     /// <returns>True if the object can be interacted with</returns>
     private bool IsObjectInteractable(GameObject obj)
     {
-        if (obj == null) return false;
+        if (obj == null) 
+        {
+            if (_showTagDebugInfo)
+                Debug.LogWarning("IsObjectInteractable: Received null GameObject");
+            return false;
+        }
+
+        // Additional null checks
+        if (_interactableTags == null)
+        {
+            Debug.LogWarning("_interactableTags is null! Initializing with default values.");
+            _interactableTags = new List<string> { "GrabbableSphere", "Rope" };
+        }
 
         // If no tags are specified, allow interaction with all objects
-        if (_interactableTags == null || _interactableTags.Count == 0)
+        if (_interactableTags.Count == 0)
         {
             if (_showTagDebugInfo)
                 Debug.Log($"No tag restrictions - allowing interaction with {obj.name}");
@@ -64,14 +76,15 @@ public class ForcepsController : MonoBehaviour
         }
 
         // Check if object has any of the allowed tags
-        bool isInteractable = _interactableTags.Contains(obj.tag);
+        string objectTag = obj.tag;
+        bool isInteractable = _interactableTags.Contains(objectTag);
 
         if (_showTagDebugInfo)
         {
             if (isInteractable)
-                Debug.Log($"Object {obj.name} with tag '{obj.tag}' is interactable");
+                Debug.Log($"✓ Object {obj.name} with tag '{objectTag}' is interactable");
             else
-                Debug.Log($"Object {obj.name} with tag '{obj.tag}' is NOT interactable. Allowed tags: [{string.Join(", ", _interactableTags)}]");
+                Debug.Log($"✗ Object {obj.name} with tag '{objectTag}' is NOT interactable. Allowed tags: [{string.Join(", ", _interactableTags)}]");
         }
 
         return isInteractable;
@@ -79,6 +92,13 @@ public class ForcepsController : MonoBehaviour
 
     public void OnUpperTriggerEnter(GameObject other)
     {
+        // Add null check
+        if (other == null)
+        {
+            Debug.LogWarning("OnUpperTriggerEnter: Received null GameObject");
+            return;
+        }
+
         // Check if the object is interactable based on its tag
         if (!IsObjectInteractable(other))
         {
@@ -94,6 +114,13 @@ public class ForcepsController : MonoBehaviour
 
     public void OnUpperTriggerExit(GameObject other)
     {
+        // Add null check
+        if (other == null)
+        {
+            Debug.LogWarning("OnUpperTriggerExit: Received null GameObject");
+            return;
+        }
+
         // Check if the object was interactable
         if (!IsObjectInteractable(other))
         {
@@ -107,6 +134,13 @@ public class ForcepsController : MonoBehaviour
 
     public void OnLowerTriggerEnter(GameObject other)
     {
+        // Add null check
+        if (other == null)
+        {
+            Debug.LogWarning("OnLowerTriggerEnter: Received null GameObject");
+            return;
+        }
+
         // Check if the object is interactable based on its tag
         if (!IsObjectInteractable(other))
         {
@@ -122,6 +156,13 @@ public class ForcepsController : MonoBehaviour
 
     public void OnLowerTriggerExit(GameObject other)
     {
+        // Add null check
+        if (other == null)
+        {
+            Debug.LogWarning("OnLowerTriggerExit: Received null GameObject");
+            return;
+        }
+
         // Check if the object was interactable
         if (!IsObjectInteractable(other))
         {
@@ -135,6 +176,9 @@ public class ForcepsController : MonoBehaviour
 
     void Start()
     {
+        // Validate all required components
+        ValidateComponents();
+
         if (_upperClamp == null || _lowerClamp == null)
         {
             Debug.LogError("Forceps clamps not assigned!");
@@ -145,6 +189,13 @@ public class ForcepsController : MonoBehaviour
         {
             Debug.LogError("Grip Action not assigned!");
             return;
+        }
+
+        // Ensure _interactableTags is initialized
+        if (_interactableTags == null)
+        {
+            _interactableTags = new List<string> { "GrabbableSphere", "Rope" };
+            Debug.Log("Initialized _interactableTags with default values");
         }
 
         // bind the grip action to the methods
@@ -161,6 +212,43 @@ public class ForcepsController : MonoBehaviour
         _lowerClamp.localRotation = _lowerClampDefaultRot;
 
         Debug.Log("ForcepsController initialized. Upper/Lower clamps set to default angles.");
+        Debug.Log($"Interactable tags: [{string.Join(", ", _interactableTags)}]");
+    }
+
+    /// <summary>
+    /// Validate all required components are assigned
+    /// </summary>
+    private void ValidateComponents()
+    {
+        bool hasErrors = false;
+
+        if (_upperClamp == null)
+        {
+            Debug.LogError("Upper Clamp Transform is not assigned!", this);
+            hasErrors = true;
+        }
+
+        if (_lowerClamp == null)
+        {
+            Debug.LogError("Lower Clamp Transform is not assigned!", this);
+            hasErrors = true;
+        }
+
+        if (_gripAction == null)
+        {
+            Debug.LogError("Grip Action Reference is not assigned!", this);
+            hasErrors = true;
+        }
+
+        if (_interactableTags == null)
+        {
+            Debug.LogWarning("Interactable Tags list is null. Will be initialized with defaults.", this);
+        }
+
+        if (hasErrors)
+        {
+            Debug.LogError("ForcepsController has missing component references. Please check the Inspector.", this);
+        }
     }
 
     private void OnGripPressed(InputAction.CallbackContext context)
