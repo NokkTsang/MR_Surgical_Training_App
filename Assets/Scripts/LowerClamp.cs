@@ -7,6 +7,11 @@ public class LowerClamp : MonoBehaviour
     [SerializeField]
     private ForcepsController parentForceps;
 
+    [Header("Debug Settings")]
+    [SerializeField]
+    [Tooltip("Show debug messages for trigger events")]
+    private bool showTriggerDebug = true;
+
     private ForcepsController cachedForcepsController;
 
     /// <summary>
@@ -39,25 +44,37 @@ public class LowerClamp : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // Debug message showing object tag
+        if (showTriggerDebug)
+        {
+            UnityEngine.Debug.Log($"[LowerClamp] Object '{other.gameObject.name}' with tag '{other.gameObject.tag}' entered trigger", this);
+        }
+
         if (ForcepsController != null)
         {
             ForcepsController.OnLowerTriggerEnter(other.gameObject);
         }
         else
         {
-            Debug.LogError("LowerClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
+            UnityEngine.Debug.LogError("LowerClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
+        // Debug message showing object tag
+        if (showTriggerDebug)
+        {
+            UnityEngine.Debug.Log($"[LowerClamp] Object '{other.gameObject.name}' with tag '{other.gameObject.tag}' exited trigger", this);
+        }
+
         if (ForcepsController != null)
         {
             ForcepsController.OnLowerTriggerExit(other.gameObject);
         }
         else
         {
-            Debug.LogError("LowerClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
+            UnityEngine.Debug.LogError("LowerClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
         }
     }
 
@@ -67,11 +84,16 @@ public class LowerClamp : MonoBehaviour
         // Validate ForcepsController reference on start
         if (ForcepsController == null)
         {
-            Debug.LogError("LowerClamp: Failed to find ForcepsController! Please assign parentForceps in the inspector.", this);
+            UnityEngine.Debug.LogError("LowerClamp: Failed to find ForcepsController! Please assign parentForceps in the inspector.", this);
         }
         else
         {
-            Debug.Log($"LowerClamp: Successfully connected to ForcepsController: {ForcepsController.name}");
+            UnityEngine.Debug.Log($"LowerClamp: Successfully connected to ForcepsController: {ForcepsController.name}");
+        }
+
+        if (showTriggerDebug)
+        {
+            UnityEngine.Debug.Log($"[LowerClamp] Trigger debugging enabled on {gameObject.name}", this);
         }
     }
 

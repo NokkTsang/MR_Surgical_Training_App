@@ -7,6 +7,11 @@ public class UpperClamp : MonoBehaviour
     [SerializeField]
     private ForcepsController parentForceps;
 
+    [Header("Debug Settings")]
+    [SerializeField]
+    [Tooltip("Show debug messages for trigger events")]
+    private bool showTriggerDebug = true;
+
     private ForcepsController cachedForcepsController;
 
     /// <summary>
@@ -39,28 +44,39 @@ public class UpperClamp : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        // Debug message showing object tag
+        if (showTriggerDebug)
+        {
+            UnityEngine.Debug.Log($"[UpperClamp] Object '{other.gameObject.name}' with tag '{other.gameObject.tag}' entered trigger", this);
+        }
+
         if (ForcepsController != null)
         {
             ForcepsController.OnUpperTriggerEnter(other.gameObject);
         }
         else
         {
-            Debug.LogError("UpperClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
+            UnityEngine.Debug.LogError("UpperClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
+        // Debug message showing object tag
+        if (showTriggerDebug)
+        {
+            UnityEngine.Debug.Log($"[UpperClamp] Object '{other.gameObject.name}' with tag '{other.gameObject.tag}' exited trigger", this);
+        }
+
         if (ForcepsController != null)
         {
             ForcepsController.OnUpperTriggerExit(other.gameObject);
         }
         else
         {
-            Debug.LogError("UpperClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
+            UnityEngine.Debug.LogError("UpperClamp: No ForcepsController found! Please assign parentForceps in the inspector or ensure ForcepsController exists in the scene.", this);
         }
     }
-
 
     // Start is called before the first frame update
     void Start()
@@ -68,11 +84,16 @@ public class UpperClamp : MonoBehaviour
         // Validate ForcepsController reference on start
         if (ForcepsController == null)
         {
-            Debug.LogError("UpperClamp: Failed to find ForcepsController! Please assign parentForceps in the inspector.", this);
+            UnityEngine.Debug.LogError("UpperClamp: Failed to find ForcepsController! Please assign parentForceps in the inspector.", this);
         }
         else
         {
-            Debug.Log($"UpperClamp: Successfully connected to ForcepsController: {ForcepsController.name}");
+            UnityEngine.Debug.Log($"UpperClamp: Successfully connected to ForcepsController: {ForcepsController.name}");
+        }
+
+        if (showTriggerDebug)
+        {
+            UnityEngine.Debug.Log($"[UpperClamp] Trigger debugging enabled on {gameObject.name}", this);
         }
     }
 

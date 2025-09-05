@@ -911,14 +911,14 @@ MonoBehaviour:
   m_Compliance: 0
   m_ClampAtEnds: 1
   currentEdge:
-    edgeIndex: -1
-    coordinate: 0
+    edgeIndex: 27
+    coordinate: 0.23999977
   firstEdge:
     edgeIndex: 0
     coordinate: 0
   lastEdge:
-    edgeIndex: 0
-    coordinate: 0
+    edgeIndex: 29
+    coordinate: 0.99969864
   breakThreshold: Infinity
 --- !u!114 &916892777
 MonoBehaviour:

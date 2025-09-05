@@ -7,29 +7,23 @@ using System;
 
 namespace Obi
 {
-    /// <summary>
-    /// Surgical Suture Blueprint - Fine physics simulation designed for medical training
-    /// Features: Lightweight, high resolution, appropriate bending stiffness, fine particle distribution
-    /// </summary>
-    [CreateAssetMenu(fileName = "surgical suture blueprint", menuName = "Obi/Surgical Suture Blueprint", order = 140)]
+    [CreateAssetMenu(fileName = "rope blueprint", menuName = "Obi/Rope Blueprint", order = 140)]
     public class ObiRopeBlueprint : ObiRopeBlueprintBase
     {
-        public int pooledParticles = 200; // Increase pooled particles to support longer sutures
+        public int pooledParticles = 100;
 
-        public const float DEFAULT_PARTICLE_MASS = 0.02f; // Reduce mass to simulate lightweight sutures
+        public const float DEFAULT_PARTICLE_MASS = 0.1f;
 
         protected override IEnumerator Initialize()
         {
             if (path.ControlPointCount < 2)
             {
                 ClearParticleGroups();
-                // Create control points suitable for surgical sutures: finer resolution and appropriate physics parameters
-                path.InsertControlPoint(0, Vector3.left * 0.05f, Vector3.left * 0.01f, Vector3.right * 0.01f, Vector3.up, DEFAULT_PARTICLE_MASS, 0.6f, 1, ObiUtils.MakeFilter(ObiUtils.CollideWithEverything,1), new Color(0.9f, 0.9f, 0.95f, 1f), "suture start");
-                path.InsertControlPoint(1, Vector3.right * 0.05f, Vector3.left * 0.01f, Vector3.right * 0.01f, Vector3.up, DEFAULT_PARTICLE_MASS, 0.6f, 1, ObiUtils.MakeFilter(ObiUtils.CollideWithEverything, 1), new Color(0.9f, 0.9f, 0.95f, 1f), "suture end");
+                path.InsertControlPoint(0, Vector3.left, Vector3.left * 0.25f, Vector3.right * 0.25f, Vector3.up, DEFAULT_PARTICLE_MASS, 1, 1, ObiUtils.MakeFilter(ObiUtils.CollideWithEverything,1), Color.white, "control point");
+                path.InsertControlPoint(1, Vector3.right, Vector3.left * 0.25f, Vector3.right * 0.25f, Vector3.up, DEFAULT_PARTICLE_MASS, 1, 1, ObiUtils.MakeFilter(ObiUtils.CollideWithEverything, 1), Color.white, "control point");
             }
 
-            // Recalculate path length with higher precision for fine sutures
-            path.RecalculateLenght(Matrix4x4.identity, 0.000001f, 10); // Higher precision and iteration count
+            path.RecalculateLenght(Matrix4x4.identity, 0.00001f, 7);
 
             List<Vector3> particlePositions = new List<Vector3>();
             List<float> particleThicknesses = new List<float>();
@@ -62,33 +56,7 @@ namespace Obi
                 float upToSpanLength = lengthTable[firstArcLengthSample];
                 float spanLength = lengthTable[lastArcLengthSample] - upToSpanLength;
 
-                // Adaptive particle density: increase density significantly when thickness is small
-                // This ensures visual continuity regardless of rope thickness
-                float adaptiveResolution = resolution;
-                
-                // Scale up resolution dramatically for thin ropes to prevent gaps
-                if (thickness < 0.01f)
-                    adaptiveResolution *= 12.0f; // Very high density for very thin ropes
-                else if (thickness < 0.02f)
-                    adaptiveResolution *= 8.0f;  // High density for thin ropes
-                else if (thickness < 0.05f)
-                    adaptiveResolution *= 6.0f;  // Medium-high density
-                else
-                    adaptiveResolution *= 4.0f;  // Standard high density
-                
-                int particlesInSpan = 1 + Mathf.FloorToInt(spanLength / thickness * adaptiveResolution);
-                
-                // Ensure minimum particle density for visual continuity
-                int minParticlesInSpan = Mathf.CeilToInt(spanLength / 0.002f); // At least one particle every 2mm
-                particlesInSpan = Mathf.Max(particlesInSpan, minParticlesInSpan);
-                
-                // Debug information for particle density optimization
-                if (i == 0) // Only log for first span to avoid spam
-                {
-                    Debug.Log($"Rope Particle Density - Thickness: {thickness:F4}m, Span Length: {spanLength:F4}m, " +
-                             $"Particles in Span: {particlesInSpan}, Distance between particles: {spanLength / particlesInSpan:F4}m");
-                }
-                
+                int particlesInSpan = 1 + Mathf.FloorToInt(spanLength / thickness * resolution);
                 float distance = spanLength / particlesInSpan;
 
                 for (int j = 0; j < particlesInSpan; ++j)
@@ -132,13 +100,11 @@ namespace Obi
 
             for (int i = 0; i < m_ActiveParticleCount; i++)
             {
-                // Set finer physics parameters for sutures
-                invMasses[i] = particleInvMasses[i] * 1.5f; // Slightly increase inverse mass for lighter sutures
+                invMasses[i] = particleInvMasses[i];
                 positions[i] = particlePositions[i];
                 restPositions[i] = positions[i];
                 restPositions[i][3] = 1; // activate rest position.
-                // Set particle radius for solid rope appearance - smaller collision but larger visual radius
-                principalRadii[i] = Vector3.one * particleThicknesses[i] * thickness * 0.6f; // Increase visual radius for solid appearance
+                principalRadii[i] = Vector3.one * particleThicknesses[i] * thickness;
                 filters[i] = particleFilters[i];
                 colors[i] = particleColors[i];
 
@@ -181,43 +147,40 @@ namespace Obi
         {
             distanceConstraintsData = new ObiDistanceConstraintsData();
 
-            // Add more batches for sutures to achieve better performance
+            // Add two batches: for even and odd constraints:
             distanceConstraintsData.AddBatch(new ObiDistanceConstraintsBatch());
             distanceConstraintsData.AddBatch(new ObiDistanceConstraintsBatch());
-            distanceConstraintsData.AddBatch(new ObiDistanceConstraintsBatch()); // Third batch
 
             for (int i = 0; i < totalParticles - 1; i++)
             {
-                var batch = distanceConstraintsData.batches[i % 3] as ObiDistanceConstraintsBatch; // Use 3 batches
+                var batch = distanceConstraintsData.batches[i % 2] as ObiDistanceConstraintsBatch;
 
                 if (i < m_ActiveParticleCount - 1)
                 {
                     Vector2Int indices = new Vector2Int(i, i + 1);
-                    // Set slightly smaller rest length for sutures to add some pre-tension
-                    restLengths[i] = Vector3.Distance(positions[indices.x], positions[indices.y]) * 0.98f;
+                    restLengths[i] = Vector3.Distance(positions[indices.x], positions[indices.y]);
                     batch.AddConstraint(indices, restLengths[i]);
                     batch.activeConstraintCount++;
                 }
                 else
                 {
-                    restLengths[i] = m_InterParticleDistance * 0.98f; // Maintain consistent pre-tension
+                    restLengths[i] = m_InterParticleDistance;
                     batch.AddConstraint(Vector2Int.zero, 0);
                 }
 
                 if (i % 500 == 0)
-                    yield return new CoroutineJob.ProgressInfo("ObiSuture: generating distance constraints...", i / (float)(totalParticles - 1));
+                    yield return new CoroutineJob.ProgressInfo("ObiRope: generating structural constraints...", i / (float)(totalParticles - 1));
 
             }
 
-            // If path is closed, add loop closing constraints for sutures
+            // if the path is closed, add the last, loop closing constraint to a new batch to avoid sharing particles.
             if (path.Closed)
             {
                 var loopClosingBatch = new ObiDistanceConstraintsBatch();
                 distanceConstraintsData.AddBatch(loopClosingBatch);
 
                 Vector2Int indices = new Vector2Int(m_ActiveParticleCount - 1, 0);
-                // Maintain same pre-tension for closed sutures
-                restLengths[m_ActiveParticleCount - 2] = Vector3.Distance(positions[indices.x], positions[indices.y]) * 0.98f;
+                restLengths[m_ActiveParticleCount - 2] = Vector3.Distance(positions[indices.x], positions[indices.y]);
                 loopClosingBatch.AddConstraint(indices, restLengths[m_ActiveParticleCount - 2]);
                 loopClosingBatch.activeConstraintCount++;
             }
@@ -228,82 +191,46 @@ namespace Obi
         {
             bendConstraintsData = new ObiBendConstraintsData();
 
-            // Add more batches for sutures to achieve better parallel performance
+            // Add three batches:
             bendConstraintsData.AddBatch(new ObiBendConstraintsBatch());
             bendConstraintsData.AddBatch(new ObiBendConstraintsBatch());
             bendConstraintsData.AddBatch(new ObiBendConstraintsBatch());
-            bendConstraintsData.AddBatch(new ObiBendConstraintsBatch()); // Fourth batch
 
             for (int i = 0; i < totalParticles - 2; i++)
             {
-                var batch = bendConstraintsData.batches[i % 4] as ObiBendConstraintsBatch; // Use 4 batches
+                var batch = bendConstraintsData.batches[i % 3] as ObiBendConstraintsBatch;
 
                 Vector3Int indices = new Vector3Int(i, i + 2, i + 1);
-                // Set appropriate bending stiffness for sutures - allow some bending but maintain shape
-                float restBend = 0.1f; // Slight bending resistance simulating natural suture stiffness
+                float restBend = 0;//ObiUtils.RestBendingConstraint(restPositions[indices[0]], restPositions[indices[1]], restPositions[indices[2]]);
                 batch.AddConstraint(indices, restBend);
 
                 if (i < m_ActiveParticleCount - 2)
                     batch.activeConstraintCount++;
 
                 if (i % 500 == 0)
-                    yield return new CoroutineJob.ProgressInfo("ObiSuture: generating bending constraints...", i / (float)(totalParticles - 2));
+                    yield return new CoroutineJob.ProgressInfo("ObiRope: generating structural constraints...", i / (float)(totalParticles - 2));
 
             }
 
-            // If path is closed, add bending loop closing constraints for sutures
+            // if the path is closed, add the last, loop closing constraints to a new batch to avoid sharing particles.
             if (path.Closed)
             {
                 var loopClosingBatch = new ObiBendConstraintsBatch();
                 bendConstraintsData.AddBatch(loopClosingBatch);
 
                 Vector3Int indices = new Vector3Int(m_ActiveParticleCount - 2, 0, m_ActiveParticleCount - 1);
-                loopClosingBatch.AddConstraint(indices, 0.1f); // Maintain slight bending resistance
+                loopClosingBatch.AddConstraint(indices, 0);
                 loopClosingBatch.activeConstraintCount++;
 
                 var loopClosingBatch2 = new ObiBendConstraintsBatch();
                 bendConstraintsData.AddBatch(loopClosingBatch2);
 
                 indices = new Vector3Int(m_ActiveParticleCount - 1, 1, 0);
-                loopClosingBatch2.AddConstraint(indices, 0.1f); // Maintain slight bending resistance
+                loopClosingBatch2.AddConstraint(indices, 0);
                 loopClosingBatch2.activeConstraintCount++;
             }
         }
 
-        /// <summary>
-        /// Calculate optimal particle density based on rope thickness
-        /// This ensures visual continuity across different thickness values
-        /// </summary>
-        public static float CalculateOptimalParticleDensity(float thickness, float baseResolution = 1.0f)
-        {
-            // Adaptive scaling based on thickness
-            float densityMultiplier;
-            
-            if (thickness < 0.001f)      // Ultra-thin ropes (< 1mm)
-                densityMultiplier = 20.0f;
-            else if (thickness < 0.005f) // Very thin ropes (1-5mm)
-                densityMultiplier = 15.0f;
-            else if (thickness < 0.01f)  // Thin ropes (5-10mm)
-                densityMultiplier = 12.0f;
-            else if (thickness < 0.02f)  // Medium-thin ropes (10-20mm)
-                densityMultiplier = 8.0f;
-            else if (thickness < 0.05f)  // Medium ropes (20-50mm)
-                densityMultiplier = 6.0f;
-            else                         // Thick ropes (>50mm)
-                densityMultiplier = 4.0f;
-            
-            return baseResolution * densityMultiplier;
-        }
-
-        /// <summary>
-        /// Get recommended minimum particle count per unit length
-        /// </summary>
-        public static float GetMinimumParticleSpacing(float thickness)
-        {
-            // Ensure particles are close enough to maintain visual continuity
-            // Rule: particle spacing should be no more than half the thickness
-            return Mathf.Min(0.002f, thickness * 0.5f);
-        }
 
     }
 }
