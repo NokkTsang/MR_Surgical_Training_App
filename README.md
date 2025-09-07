@@ -33,6 +33,7 @@ The laparoscopic forceps module represents one of core functionalities of this t
 -	XR Interaction Toolkit (2.6.4+)
 -	XR Plugin Management (4.4.0+)
 -	Oculus XR Plugin (3.2.3+)
+-	Obi Rope (7.1+)
 
 ### Platform Support
 - **Meta Quest 2**
