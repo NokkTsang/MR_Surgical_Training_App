@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5b9c84cdb747944209b1c8753933c5db, type: 3}
   m_Name: RopeMaterial
   m_EditorClassIdentifier: 
-  dynamicFriction: 0.6
+  dynamicFriction: 1
   staticFriction: 0.6
   stickiness: 0.01
   stickDistance: 0
