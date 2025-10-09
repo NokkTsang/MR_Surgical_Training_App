@@ -30,7 +30,7 @@ public class ObiRopeInteractable : MonoBehaviour
     [SerializeField]
     [Range(0.1f, 5.0f)]
     [Tooltip("Maximum distance to consider for attachment")]
-    private float m_MaxAttachDistance = 0.05f;
+    private float m_MaxAttachDistance = 0.1f;
 
     [Header("Attachment Behavior")]
     [SerializeField]
@@ -387,6 +387,7 @@ public class ObiRopeInteractable : MonoBehaviour
     // Attachment logic system
     private void ProcessAttachmentLogic()
     {
+        // 1) Handle new attachments/detachments for nearby forceps
         foreach (var forceps in m_NearbyForceps)
         {
             if (forceps == null) continue;
@@ -402,6 +403,36 @@ public class ObiRopeInteractable : MonoBehaviour
             else if (!gripPressed && isAttached)
             {
                 DetachFromForceps(forceps);
+            }
+        }
+
+        // 2) Robust detachment pass for all active attachments regardless of proximity
+        //    (fixes issue where grip is released outside detection radius and particles remain kinematic)
+        if (m_ActiveAttachments.Count > 0)
+        {
+            // Copy to avoid collection modification during iteration
+            var attachmentsSnapshot = new List<KeyValuePair<int, AttachmentInfo>>(m_ActiveAttachments);
+            foreach (var kvp in attachmentsSnapshot)
+            {
+                int forcepsId = kvp.Key;
+                var attachInfo = kvp.Value;
+                var forceps = attachInfo.forceps;
+
+                bool gripPressed = forceps != null && forceps.IsGripPressed;
+                bool shouldDetach = !gripPressed; // detach if no forceps or grip not pressed
+
+                if (shouldDetach)
+                {
+                    if (forceps != null)
+                    {
+                        DetachFromForceps(forceps);
+                    }
+                    else
+                    {
+                        // Forceps reference lost/destroyed: detach by id
+                        DetachAttachmentById(forcepsId, attachInfo);
+                    }
+                }
             }
         }
     }
@@ -600,8 +631,30 @@ public class ObiRopeInteractable : MonoBehaviour
         for (int i = 0; i < attachInfo.particleIndices.Count && i < attachInfo.originalInvMasses.Count; i++)
         {
             int solverIndex = attachInfo.particleIndices[i];
-            solver.invMasses[solverIndex] = attachInfo.originalInvMasses[i];
+            // Safety: bounds check before restoring
+            if (solverIndex >= 0 && solverIndex < solver.invMasses.count)
+                solver.invMasses[solverIndex] = attachInfo.originalInvMasses[i];
+
+            // Clear any accumulated external forces from dynamic attachment mode
+            if (solver.externalForces != null && solverIndex >= 0 && solverIndex < solver.externalForces.count)
+                solver.externalForces[solverIndex] = Vector4.zero;
         }
+    }
+
+    // Helper to detach when we only have the attachment id (forceps may be destroyed or out of range)
+    private void DetachAttachmentById(int forcepsId, AttachmentInfo attachInfo)
+    {
+        if (attachInfo == null) return;
+
+        // Restore original particle properties and colors
+        RestoreParticleProperties(attachInfo);
+        if (m_EnableAttachmentColoring)
+            RestoreParticleColors(attachInfo);
+
+        m_ActiveAttachments.Remove(forcepsId);
+
+        if (m_ShowDebugInfo)
+            Debug.Log($"Detached rope {gameObject.name} from forceps id {forcepsId}");
     }
 
     // Position update system for attached particles
@@ -668,8 +721,24 @@ public class ObiRopeInteractable : MonoBehaviour
         
         foreach (var attachInfo in attachmentsCopy.Values)
         {
-            if (attachInfo?.forceps != null)
+            if (attachInfo == null) continue;
+
+            if (attachInfo.forceps != null)
+            {
                 DetachFromForceps(attachInfo.forceps);
+            }
+            else
+            {
+                // Forceps lost: detach using id lookup
+                foreach (var kvp in m_ActiveAttachments)
+                {
+                    if (kvp.Value == attachInfo)
+                    {
+                        DetachAttachmentById(kvp.Key, attachInfo);
+                        break;
+                    }
+                }
+            }
         }
 
         if (m_EnableAttachmentColoring)
