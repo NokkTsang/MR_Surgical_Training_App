@@ -268,8 +268,28 @@ public class ObiRopeInteractable : MonoBehaviour
     {
         m_NearbyForceps.Clear();
         
-        var allForceps = FindObjectsOfType<ForcepsController>();
-        
+        // Find all ForcepsController and ForcepsControllerGeometric in the scene
+        var allForceps = new List<ForcepsController>();
+        allForceps.AddRange(FindObjectsOfType<ForcepsController>());
+        // Try to find ForcepsControllerGeometric if it exists and is not a subclass of ForcepsController
+        var geometricType = System.Type.GetType("ForcepsControllerGeometric");
+        if (geometricType != null && !typeof(ForcepsController).IsAssignableFrom(geometricType))
+        {
+            var geometricForceps = GameObject.FindObjectsOfType(geometricType);
+            foreach (var obj in geometricForceps)
+            {
+                if (obj is MonoBehaviour mb && mb.enabled)
+                {
+                    // Use dynamic for compatibility with TryAttachToForceps, etc.
+                    allForceps.Add(mb as ForcepsController);
+                }
+            }
+        }
+        else
+        {
+            // If ForcepsControllerGeometric inherits from ForcepsController, it's already included
+        }
+
         foreach (var forceps in allForceps)
         {
             if (forceps != null && IsForcepsNearRope(forceps))
