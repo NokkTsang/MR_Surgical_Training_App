@@ -55,9 +55,9 @@ public class ForcepsController : MonoBehaviour
     private Quaternion _lowerClampDefaultRot;
     private Coroutine _currentAnimation;
 
-    // Trigger detection states
-    private bool _isObjectInUpperTrigger = false;
-    private bool _isObjectInLowerTrigger = false;
+    // Trigger detection states (robust tracking)
+    private HashSet<GameObject> _objectsInUpperTrigger = new HashSet<GameObject>();
+    private HashSet<GameObject> _objectsInLowerTrigger = new HashSet<GameObject>();
     private bool _isRopeInUpperTrigger = false;
     private bool _isRopeInLowerTrigger = false;
 
@@ -243,7 +243,7 @@ public class ForcepsController : MonoBehaviour
         if (!IsObjectInteractable(other)) return;
 
         Debug.Log($"🎯 Upper clamp: {other.name} entered");
-        _isObjectInUpperTrigger = true;
+        _objectsInUpperTrigger.Add(other);
     }
 
     public void OnUpperTriggerExit(GameObject other)
@@ -252,7 +252,7 @@ public class ForcepsController : MonoBehaviour
         if (!IsObjectInteractable(other)) return;
 
         Debug.Log($"🎯 Upper clamp: {other.name} exited");
-        _isObjectInUpperTrigger = false;
+        _objectsInUpperTrigger.Remove(other);
     }
 
     public void OnLowerTriggerEnter(GameObject other)
@@ -261,7 +261,7 @@ public class ForcepsController : MonoBehaviour
         if (!IsObjectInteractable(other)) return;
 
         Debug.Log($"🎯 Lower clamp: {other.name} entered");
-        _isObjectInLowerTrigger = true;
+        _objectsInLowerTrigger.Add(other);
     }
 
     public void OnLowerTriggerExit(GameObject other)
@@ -270,7 +270,7 @@ public class ForcepsController : MonoBehaviour
         if (!IsObjectInteractable(other)) return;
 
         Debug.Log($"🎯 Lower clamp: {other.name} exited");
-        _isObjectInLowerTrigger = false;
+        _objectsInLowerTrigger.Remove(other);
     }
 
     /// <summary>
@@ -499,11 +499,11 @@ public class ForcepsController : MonoBehaviour
     private bool ShouldStopClosingAnimation()
     {
         // Unity objects (like balls): Any single trigger stops animation immediately
-        bool unityObjectDetected = _isObjectInUpperTrigger || _isObjectInLowerTrigger;
-        
+        bool unityObjectDetected = _objectsInUpperTrigger.Count > 0 || _objectsInLowerTrigger.Count > 0;
+
         // Rope objects: BOTH upper AND lower triggers required to stop animation
         bool ropeProperlyClamped = _isRopeInUpperTrigger && _isRopeInLowerTrigger;
-        
+
         if (_showTagDebugInfo && (unityObjectDetected || ropeProperlyClamped))
         {
             if (unityObjectDetected)
@@ -511,7 +511,7 @@ public class ForcepsController : MonoBehaviour
             if (ropeProperlyClamped)
                 Debug.Log("🛑 Rope properly clamped (both triggers) - stopping animation");
         }
-        
+
         return unityObjectDetected || ropeProperlyClamped;
     }
 
@@ -544,8 +544,8 @@ public class ForcepsController : MonoBehaviour
     /// </summary>
     private void LogTriggerDetails()
     {
-        if (_isObjectInUpperTrigger) Debug.Log("  ↳ Unity object in upper trigger");
-        if (_isObjectInLowerTrigger) Debug.Log("  ↳ Unity object in lower trigger");
+    if (_objectsInUpperTrigger.Count > 0) Debug.Log("  ↳ Unity object in upper trigger");
+    if (_objectsInLowerTrigger.Count > 0) Debug.Log("  ↳ Unity object in lower trigger");
         if (_isRopeInUpperTrigger) Debug.Log("  ↳ Rope in upper trigger");
         if (_isRopeInLowerTrigger) Debug.Log("  ↳ Rope in lower trigger");
         
