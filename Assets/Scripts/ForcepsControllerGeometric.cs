@@ -4,6 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// Controls forceps behavior including animation, trigger detection, and interaction with objects and Obi ropes.
+/// Supports both Unity collider-based objects (balls) and Obi rope particle-based detection.
+/// </summary>
+
 public class ForcepsControllerGeometric : MonoBehaviour
 {
     [Header("Input Actions")]
@@ -23,12 +28,32 @@ public class ForcepsControllerGeometric : MonoBehaviour
     [Tooltip("Default radius if tag not found.")]
     public float DefaultRadius = 0.01f;
 
+    [Header("Interaction Settings")]
+    [SerializeField]
+    [Tooltip("Objects with these tags can be grabbed by the forceps")]
+    private List<string> _interactableTags = new List<string> { "GrabbableSphere", "Rope" };
+
+    [SerializeField]
+    [Tooltip("Enable debug logs for interaction events")]
+    private bool _showTagDebugInfo = true;
+
+    [Header("Rope Detection")]
+    [SerializeField]
+    [Tooltip("Enable Obi rope particle detection")]
+    private bool _enableRopeDetection = true;
+
+    [Header("Attach Points (Geometric)")]
+    [SerializeField] private List<Transform> AttachPoints; // inner,middle,outer 
+
     private bool _isGripPressed = false;
     private bool _isAnimating = false;
     private Quaternion _upperClampDefaultRot;
     private Quaternion _lowerClampDefaultRot;
     private Coroutine _currentAnimation;
+
+    private ObiRopeInteractable _ropeInteractable;
     private string _currentObjectTag = "Default";
+    private GameObject _currentObject = null;
 
     [Serializable]
     public class TagRadius
@@ -63,15 +88,57 @@ public class ForcepsControllerGeometric : MonoBehaviour
         _currentObjectTag = tag;
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (!_interactableTags.Contains(other.tag)) return;
+        _currentObjectTag = other.tag;
+        _currentObject = other.gameObject;
+        if (_showTagDebugInfo) Debug.Log($"Trigger enter: {other.name} ({other.tag})");
+        // Rope detection
+        var rope = other.GetComponent<ObiRopeInteractable>();
+        if (_enableRopeDetection && rope != null)
+        {
+            _ropeInteractable = rope;
+            // Request rope to use red for selected particles (if it supports such messages)
+            _ropeInteractable.SendMessage("EnableAttachmentColoring", true, SendMessageOptions.DontRequireReceiver);
+            _ropeInteractable.SendMessage("SetAttachedParticleColor", Color.red, SendMessageOptions.DontRequireReceiver);
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (_currentObject == other.gameObject)
+        {
+            _currentObject = null;
+            _currentObjectTag = "Default";
+            if (_showTagDebugInfo) Debug.Log($"Trigger exit: {other.name} ({other.tag})");
+            if (_enableRopeDetection && other.GetComponent<ObiRopeInteractable>() != null)
+                _ropeInteractable = null;
+        }
+    }
+
     private void OnGripPressed(InputAction.CallbackContext context)
     {
         _isGripPressed = true;
+        if (_ropeInteractable != null)
+        {
+            // Attach and ensure coloring is red
+            _ropeInteractable.SendMessage("TryAttachToForceps", this, SendMessageOptions.DontRequireReceiver);
+            _ropeInteractable.SendMessage("EnableAttachmentColoring", true, SendMessageOptions.DontRequireReceiver);
+            _ropeInteractable.SendMessage("SetAttachedParticleColor", Color.red, SendMessageOptions.DontRequireReceiver);
+            if (_showTagDebugInfo) Debug.Log("Forceps attached to rope (via SendMessage) with red selection color");
+        }
         StartSmoothAnimation(true);
     }
 
     private void OnGripReleased(InputAction.CallbackContext context)
     {
         _isGripPressed = false;
+        if (_ropeInteractable != null)
+        {
+            _ropeInteractable.SendMessage("DetachFromForceps", this, SendMessageOptions.DontRequireReceiver);
+            if (_showTagDebugInfo) Debug.Log("Forceps detached from rope (via SendMessage)");
+        }
         StartSmoothAnimation(false);
     }
 
@@ -91,10 +158,9 @@ public class ForcepsControllerGeometric : MonoBehaviour
 
         if (closing)
         {
-            float radius = GetRadiusForTag(_currentObjectTag);
-            float closeAngle = CalculateClampCloseAngle(radius);
-            upperTarget = Quaternion.Euler(-closeAngle, -90f, 90f);
-            lowerTarget = Quaternion.Euler(-closeAngle, 90f, -90f);
+            // Always use the fixed closed target rotations for both clamps
+            upperTarget = Quaternion.Euler(-90f, -90f, 90f);
+            lowerTarget = Quaternion.Euler(-90f, 90f, -90f);
         }
         else
         {
@@ -117,17 +183,19 @@ public class ForcepsControllerGeometric : MonoBehaviour
         _currentAnimation = null;
     }
 
-    // Geometric calculation: given two clamp positions and object radius, compute clamp close angle
-    private float CalculateClampCloseAngle(float objectRadius)
+    // Geometric calculation: given attach point and object radius, compute clamp close angle relative to the normal (middle) line
+    private float CalculateClampCloseAngleFromAttachPoint(Transform attachPoint, float objectRadius)
     {
-        Vector3 p1 = _upperClamp.position;
-        Vector3 p2 = _lowerClamp.position;
-        float d = Vector3.Distance(p1, p2);
-        float r = objectRadius;
-        float halfD = d / 2f;
-        float angleRad = 2f * Mathf.Asin(Mathf.Clamp(r / halfD, -1f, 1f));
-        float angleDeg = Mathf.Rad2Deg * angleRad;
-        return Mathf.Clamp(angleDeg, 10f, 90f);
+        if (attachPoint == null) return 30f; // fallback
+        // The normal (middle) line is the vector between the two clamp pivots
+        Vector3 middle = (_upperClamp.position + _lowerClamp.position) * 0.5f;
+        Vector3 clampLine = (_upperClamp.position - _lowerClamp.position).normalized;
+        Vector3 attachDir = (attachPoint.position - middle).normalized;
+        // The angle between the attach direction and the clamp line is the reference
+        float angle = Vector3.Angle(attachDir, clampLine);
+        // Now, use the object radius to further adjust the angle if needed (optional, or just use this angle)
+        // Clamp to reasonable range
+        return Mathf.Clamp(angle, 5f, 90f);
     }
 
     private float GetRadiusForTag(string tag)
@@ -140,13 +208,4 @@ public class ForcepsControllerGeometric : MonoBehaviour
         return DefaultRadius;
     }
 
-#if UNITY_EDITOR
-    private void OnDrawGizmos()
-    {
-        float radius = GetRadiusForTag(_currentObjectTag);
-        Gizmos.color = Color.blue;
-        if (_upperClamp != null) Gizmos.DrawWireSphere(_upperClamp.position, radius);
-        if (_lowerClamp != null) Gizmos.DrawWireSphere(_lowerClamp.position, radius);
-    }
-#endif
 }
