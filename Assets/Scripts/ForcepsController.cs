@@ -348,22 +348,18 @@ public class ForcepsController : MonoBehaviour
     /// </summary>
     private bool IsRopeNearForceps()
     {
-        try
+        if (_ropeInteractable != null)
         {
-            var method = typeof(ObiRopeInteractable).GetMethod("IsForcepsNearRope", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
-            if (method != null)
+            try
             {
-                return (bool)method.Invoke(_ropeInteractable, new object[] { this });
+                return _ropeInteractable.IsForcepsNearRopePublic(this);
+            }
+            catch (System.Exception ex)
+            {
+                if (_showTagDebugInfo)
+                    Debug.LogWarning($"Rope detection failed: {ex.Message}");
             }
         }
-        catch (System.Exception ex)
-        {
-            if (_showTagDebugInfo)
-                Debug.LogWarning($"Rope detection failed: {ex.Message}");
-        }
-
         return false;
     }
 

@@ -9,9 +9,10 @@ using Obi;
 /*    Automatically attaches nearest particles to attach points */
 /* ============================================================= */
 
-[RequireComponent(typeof(ObiActor))]
-public class ObiRopeInteractable : MonoBehaviour
-{
+ [RequireComponent(typeof(ObiActor))]
+ public class ObiRopeInteractable : MonoBehaviour
+    // Performance optimization fields
+ {
     [Header("Interaction Settings")]
     [SerializeField]
     [Tooltip("Enable rope interaction with forceps")]
@@ -82,6 +83,16 @@ public class ObiRopeInteractable : MonoBehaviour
     private List<ForcepsController> m_NearbyForceps = new List<ForcepsController>();
     private Dictionary<int, AttachmentInfo> m_ActiveAttachments = new Dictionary<int, AttachmentInfo>();
     private Dictionary<int, Color> m_OriginalParticleColors = new Dictionary<int, Color>();
+    // Performance optimization fields
+    [Header("Performance Optimization")]
+    [SerializeField]
+    [Tooltip("Rope detection update frequency (Hz)")]
+    private float m_ForcepsCheckFrequency = 30f;
+
+    private float m_LastForcepsCheckTime = 0f;
+
+    // Cache for RopeXRDirectInteractor reflection field
+    private static System.Reflection.FieldInfo s_AttachPointsField = null;
     
     // Data structure to store attachment information
     private class AttachmentInfo
@@ -142,7 +153,12 @@ public class ObiRopeInteractable : MonoBehaviour
     {
         if (!m_EnableInteraction || !IsRopeActorReady()) return;
 
-        UpdateNearbyForcepsDetection();
+        // Throttle detection to improve performance
+        if (Time.time - m_LastForcepsCheckTime >= 1f / m_ForcepsCheckFrequency)
+        {
+            UpdateNearbyForcepsDetection();
+            m_LastForcepsCheckTime = Time.time;
+        }
         ProcessAttachmentLogic();
         UpdateActiveAttachments();
 
@@ -315,7 +331,6 @@ public class ObiRopeInteractable : MonoBehaviour
 
         List<Vector3> checkPositions = GetForcepsCheckPositions(forceps, ropeInteractor);
 
-        // Check distance to rope particles
         foreach (var position in checkPositions)
         {
             float distance = GetDistanceToNearestParticle(position);
@@ -324,6 +339,12 @@ public class ObiRopeInteractable : MonoBehaviour
         }
 
         return false;
+    }
+
+    // Public method for ForcepsController to call directly
+    public bool IsForcepsNearRopePublic(ForcepsController forceps)
+    {
+        return IsForcepsNearRope(forceps);
     }
 
     private List<Vector3> GetForcepsCheckPositions(ForcepsController forceps, RopeXRDirectInteractor ropeInteractor)
@@ -350,26 +371,25 @@ public class ObiRopeInteractable : MonoBehaviour
     private List<Transform> GetRopeInteractorAttachPoints(RopeXRDirectInteractor interactor)
     {
         var attachPoints = new List<Transform>();
-        
         try
         {
-            // Use reflection to access private attach points list
-            var field = typeof(RopeXRDirectInteractor).GetField("m_AttachPoints", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            
-            if (field != null)
+            // Cache reflection field to reduce performance overhead
+            if (s_AttachPointsField == null)
             {
-                var points = field.GetValue(interactor) as List<Transform>;
+                s_AttachPointsField = typeof(RopeXRDirectInteractor).GetField("m_AttachPoints", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            }
+            if (s_AttachPointsField != null)
+            {
+                var points = s_AttachPointsField.GetValue(interactor) as List<Transform>;
                 if (points != null)
                     attachPoints.AddRange(points);
             }
         }
         catch
         {
-            // Fallback: use main transform
             attachPoints.Add(interactor.transform);
         }
-
         return attachPoints;
     }
 
