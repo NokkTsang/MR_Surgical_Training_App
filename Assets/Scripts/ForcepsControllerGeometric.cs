@@ -122,11 +122,12 @@ public class ForcepsControllerGeometric : MonoBehaviour
         _isGripPressed = true;
         if (_ropeInteractable != null)
         {
-            // Attach and ensure coloring is red
-            _ropeInteractable.SendMessage("TryAttachToForceps", this, SendMessageOptions.DontRequireReceiver);
-            _ropeInteractable.SendMessage("EnableAttachmentColoring", true, SendMessageOptions.DontRequireReceiver);
-            _ropeInteractable.SendMessage("SetAttachedParticleColor", Color.red, SendMessageOptions.DontRequireReceiver);
-            if (_showTagDebugInfo) Debug.Log("Forceps attached to rope (via SendMessage) with red selection color");
+            // Attach using public API for geometric controller
+            _ropeInteractable.AttachToForceps(this);
+            // Optional: set coloring if available
+            _ropeInteractable.EnableAttachmentColoring = true;
+            _ropeInteractable.AttachedParticleColor = Color.red;
+            if (_showTagDebugInfo) Debug.Log("Forceps attached to rope (Geometric API) with red selection color");
         }
         StartSmoothAnimation(true);
     }
@@ -136,8 +137,8 @@ public class ForcepsControllerGeometric : MonoBehaviour
         _isGripPressed = false;
         if (_ropeInteractable != null)
         {
-            _ropeInteractable.SendMessage("DetachFromForceps", this, SendMessageOptions.DontRequireReceiver);
-            if (_showTagDebugInfo) Debug.Log("Forceps detached from rope (via SendMessage)");
+            _ropeInteractable.DetachFromForceps(this);
+            if (_showTagDebugInfo) Debug.Log("Forceps detached from rope (Geometric API)");
         }
         StartSmoothAnimation(false);
     }
