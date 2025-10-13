@@ -83,6 +83,8 @@ using Obi;
     private List<ForcepsController> m_NearbyForceps = new List<ForcepsController>();
     private Dictionary<int, AttachmentInfo> m_ActiveAttachments = new Dictionary<int, AttachmentInfo>();
     private Dictionary<int, Color> m_OriginalParticleColors = new Dictionary<int, Color>();
+    // Track how many forceps are currently holding each solver particle index
+    private Dictionary<int,int> m_ParticleHoldCounts = new Dictionary<int,int>();
     // Performance optimization fields
     [Header("Performance Optimization")]
     [SerializeField]
@@ -284,33 +286,28 @@ using Obi;
     {
         m_NearbyForceps.Clear();
         
-        // Find all ForcepsController and ForcepsControllerGeometric in the scene
+        // Find all standard forceps
         var allForceps = new List<ForcepsController>();
         allForceps.AddRange(FindObjectsOfType<ForcepsController>());
-        // Try to find ForcepsControllerGeometric if it exists and is not a subclass of ForcepsController
-        var geometricType = System.Type.GetType("ForcepsControllerGeometric");
-        if (geometricType != null && !typeof(ForcepsController).IsAssignableFrom(geometricType))
-        {
-            var geometricForceps = GameObject.FindObjectsOfType(geometricType);
-            foreach (var obj in geometricForceps)
-            {
-                if (obj is MonoBehaviour mb && mb.enabled)
-                {
-                    // Use dynamic for compatibility with TryAttachToForceps, etc.
-                    allForceps.Add(mb as ForcepsController);
-                }
-            }
-        }
-        else
-        {
-            // If ForcepsControllerGeometric inherits from ForcepsController, it's already included
-        }
+
+        // Also consider Geometric forceps separately
+        var allGeometric = FindObjectsOfType<ForcepsControllerGeometric>();
 
         foreach (var forceps in allForceps)
         {
             if (forceps != null && IsForcepsNearRope(forceps))
             {
                 m_NearbyForceps.Add(forceps);
+            }
+        }
+
+        // Geometric: treat them as nearby if within detection
+        foreach (var g in allGeometric)
+        {
+            if (g != null && IsGeometricForcepsNearRope(g))
+            {
+                // We cannot add to m_NearbyForceps (typed ForcepsController), but we will handle attachments via public methods
+                // Optionally: attach when grip pressed will be handled elsewhere
             }
         }
 
@@ -341,6 +338,22 @@ using Obi;
         return false;
     }
 
+    // Geometric variant proximity check
+    private bool IsGeometricForcepsNearRope(ForcepsControllerGeometric forceps)
+    {
+        if (!IsRopeActorReady() || forceps == null) return false;
+
+        var points = GetGeometricAttachPoints(forceps);
+        foreach (var p in points)
+        {
+            if (p == null) continue;
+            float d = GetDistanceToNearestParticle(p.position);
+            if (d != float.MaxValue && d <= m_DetectionRadius)
+                return true;
+        }
+        return false;
+    }
+
     // Public method for ForcepsController to call directly
     public bool IsForcepsNearRopePublic(ForcepsController forceps)
     {
@@ -358,6 +371,20 @@ using Obi;
             {
                 if (point != null)
                     checkPositions.Add(point.position);
+            }
+        }
+        else
+        {
+            // Fallback: if this is a geometric controller, use its attach points
+            var geo = forceps.GetComponent<ForcepsControllerGeometric>();
+            if (geo != null)
+            {
+                var geoPoints = GetGeometricAttachPoints(geo);
+                foreach (var gp in geoPoints)
+                {
+                    if (gp != null)
+                        checkPositions.Add(gp.position);
+                }
             }
         }
         
@@ -391,6 +418,63 @@ using Obi;
             attachPoints.Add(interactor.transform);
         }
         return attachPoints;
+    }
+
+    private List<Transform> GetGeometricAttachPoints(ForcepsControllerGeometric geo)
+    {
+        // Expect a public or serialized list named AttachPoints
+        var points = new List<Transform>();
+        try
+        {
+            var field = typeof(ForcepsControllerGeometric).GetField("AttachPoints", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field != null)
+            {
+                var list = field.GetValue(geo) as List<Transform>;
+                if (list != null)
+                    points.AddRange(list);
+            }
+        }
+        catch { }
+        // Fallback to main transform if none
+        if (points.Count == 0)
+            points.Add(geo.transform);
+        return points;
+    }
+
+    // Public attach/detach for geometric controller
+    public void AttachToForceps(ForcepsControllerGeometric geo)
+    {
+        if (geo == null) return;
+        // Reuse standard pipeline by selecting best point from geometric points
+        var points = GetGeometricAttachPoints(geo);
+        var best = FindClosestParticleToAttachPoints(points);
+        if (best == null) return;
+        // Wrap into ForcepsController-like flow using positions
+        // Create a temporary attachment using the first attach point
+        var attachInfo = CreateAttachmentInfo(null, best);
+        var particlesToAttach = GetParticlesToAttach(best.particleIndex);
+        var solver = m_RopeActor.solver;
+        foreach (int particleIndex in particlesToAttach)
+        {
+            int solverIndex = m_RopeActor.solverIndices[particleIndex];
+            StoreParticleData(attachInfo, solverIndex, solver);
+            if (m_UseKinematicAttach)
+                solver.invMasses[solverIndex] = 0f;
+        }
+        CalculateLocalOffset(attachInfo);
+        ApplyInitialColoring(attachInfo);
+        // Use geo instance ID as key
+        m_ActiveAttachments[geo.GetInstanceID()] = attachInfo;
+    }
+
+    public void DetachFromForceps(ForcepsControllerGeometric geo)
+    {
+        if (geo == null) return;
+        int id = geo.GetInstanceID();
+        if (!m_ActiveAttachments.TryGetValue(id, out var attachInfo)) return;
+        RestoreParticleProperties(attachInfo);
+        if (m_EnableAttachmentColoring) RestoreParticleColors(attachInfo);
+        m_ActiveAttachments.Remove(id);
     }
 
     private float GetDistanceToNearestParticle(Vector3 position)
@@ -490,11 +574,18 @@ using Obi;
         foreach (int particleIndex in particlesToAttach)
         {
             int solverIndex = m_RopeActor.solverIndices[particleIndex];
-            
+
             StoreParticleData(attachInfo, solverIndex, solver);
-            
-            if (m_UseKinematicAttach)
-                solver.invMasses[solverIndex] = 0f; // Make kinematic
+
+            // Increment hold count and set kinematic if now held by at least one forceps
+            int count = 0;
+            m_ParticleHoldCounts.TryGetValue(solverIndex, out count);
+            count++;
+            m_ParticleHoldCounts[solverIndex] = count;
+            if (m_UseKinematicAttach && count > 0)
+            {
+                solver.invMasses[solverIndex] = 0f; // Make kinematic while held
+            }
         }
 
         // Calculate spatial relationship and apply visual feedback
@@ -671,9 +762,23 @@ using Obi;
         for (int i = 0; i < attachInfo.particleIndices.Count && i < attachInfo.originalInvMasses.Count; i++)
         {
             int solverIndex = attachInfo.particleIndices[i];
-            // Safety: bounds check before restoring
-            if (solverIndex >= 0 && solverIndex < solver.invMasses.count)
-                solver.invMasses[solverIndex] = attachInfo.originalInvMasses[i];
+            // Decrement hold count; only restore invMass when no forceps is holding this particle
+            int count = 0;
+            if (m_ParticleHoldCounts.TryGetValue(solverIndex, out count))
+            {
+                count = Mathf.Max(0, count - 1);
+                if (count == 0)
+                {
+                    // Safety: bounds check before restoring
+                    if (solverIndex >= 0 && solverIndex < solver.invMasses.count)
+                        solver.invMasses[solverIndex] = attachInfo.originalInvMasses[i];
+                    m_ParticleHoldCounts.Remove(solverIndex);
+                }
+                else
+                {
+                    m_ParticleHoldCounts[solverIndex] = count;
+                }
+            }
 
             // Clear any accumulated external forces from dynamic attachment mode
             if (solver.externalForces != null && solverIndex >= 0 && solverIndex < solver.externalForces.count)
@@ -783,6 +888,30 @@ using Obi;
 
         if (m_EnableAttachmentColoring)
             RestoreAllParticleColors();
+
+        // Ensure all hold counts are cleared and remaining kinematic particles restored
+        var solver = m_RopeActor.solver;
+        var indicesToClear = new List<int>(m_ParticleHoldCounts.Keys);
+        foreach (var solverIndex in indicesToClear)
+        {
+            // Find a representative original invMass from any attachment that had this solverIndex
+            float originalInv = 1f; // default dynamic
+            foreach (var kvp in attachmentsCopy)
+            {
+                var info = kvp.Value;
+                for (int i = 0; i < info.particleIndices.Count && i < info.originalInvMasses.Count; i++)
+                {
+                    if (info.particleIndices[i] == solverIndex)
+                    {
+                        originalInv = info.originalInvMasses[i];
+                        break;
+                    }
+                }
+            }
+            if (solverIndex >= 0 && solverIndex < solver.invMasses.count)
+                solver.invMasses[solverIndex] = originalInv;
+        }
+        m_ParticleHoldCounts.Clear();
     }
 
     public bool IsAttachedTo(ForcepsController forceps)
