@@ -25,7 +25,7 @@ namespace SofaUnity
                 m_otherObjectCtrl = m_otherTool.GetComponent<GameObjectController>();
         }
 
-        // Helper: accept either keypad or top-row number key
+        // Add: accept either keypad or top-row number key
         private bool IsNumKey(KeyCode keypad, KeyCode alpha)
         {
             return Input.GetKey(keypad) || Input.GetKey(alpha);
