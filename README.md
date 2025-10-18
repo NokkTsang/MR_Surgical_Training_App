@@ -14,13 +14,16 @@ This is a Unity-based mixed reality application for surgical training. This proj
 ### Laparoscopic Forceps
 
 The laparoscopic forceps module represents one of core functionalities of this training application.
-
 <div align="center">
 <img src="./media/laparoscopic-forceps.jpg" alt="Laparoscopic Forceps" width="300"/>
 </div>
 
-### further surgical tools ...
+### Organs Interaction
 
+Integrates the Simulation Open Framework Architecture (SOFA) via the SofaUnity bridge to provide real-time, deformable organ models and instrument-to-tissue interactions for surgical training scenarios.
+<div align="center">
+<img src="./media/SOFA_liver.png" alt="Sofa Liver" width="300"/>
+</div>
 
 ## 📋 Requirements
 ### Development Environment
@@ -34,6 +37,7 @@ The laparoscopic forceps module represents one of core functionalities of this t
 -	XR Plugin Management (4.4.0+)
 -	Oculus XR Plugin (3.2.3+)
 -	Obi Rope (7.1+)
+-   SofaUnity (24.12.00)
 
 ### Platform Support
 - **Meta Quest 2**
