@@ -495,6 +495,13 @@ namespace SofaUnityAPI
                     }
                 }
 
+                // If vertex buffer was resized, clear triangles first to avoid Unity error:
+                // "Mesh.vertices is too small. The supplied vertex array has less vertices than are referenced by the triangles array"
+                if (first)
+                {
+                    mesh.triangles = System.Array.Empty<int>();
+                }
+
                 mesh.vertices = verts;
                 mesh.normals = norms;
 
