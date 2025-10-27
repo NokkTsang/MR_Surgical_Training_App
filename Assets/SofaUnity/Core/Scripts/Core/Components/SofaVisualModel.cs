@@ -118,20 +118,38 @@ namespace SofaUnity
             if (m_sofaMeshAPI == null)
                 return;
             
-            if (m_sofaMeshAPI.HasTopologyChanged())
-            {
-                int oldNbV = NbVertices();
-                int newNbV = m_sofaMeshAPI.getNbVertices();
+            // Topology (indices) changed, or vertex count drift detected: regenerate triangles safely
+            int oldNbV = NbVertices();
+            int apiNbV = m_sofaMeshAPI.getNbVertices();
+            bool vertexCountChanged = (apiNbV != oldNbV);
 
-                if (newNbV < oldNbV)
+            if (m_sofaMeshAPI.HasTopologyChanged() || vertexCountChanged)
+            {
+                int newNbV = apiNbV;
+                // IMPORTANT: updateMesh may resize the vertex buffer and (by design) clear triangles to avoid Unity errors.
+                // Therefore, ALWAYS call updateMesh first, then assign triangles.
+                m_sofaMeshAPI.updateMesh(m_mesh);
+                var tris = m_sofaMeshAPI.createTriangulation();
+                int vCount = (m_mesh.vertices != null) ? m_mesh.vertices.Length : 0;
+                if (!AreTrianglesValid(tris, vCount))
                 {
-                    m_mesh.triangles = m_sofaMeshAPI.createTriangulation();
+                    // Retry once after refreshing vertices
                     m_sofaMeshAPI.updateMesh(m_mesh);
+                    vCount = (m_mesh.vertices != null) ? m_mesh.vertices.Length : 0;
+                    var retryTris = m_sofaMeshAPI.createTriangulation();
+                    if (!AreTrianglesValid(retryTris, vCount))
+                    {
+                        var sanitized = SanitizeTriangles(retryTris, vCount);
+                        m_mesh.triangles = sanitized ?? System.Array.Empty<int>();
+                    }
+                    else
+                    {
+                        m_mesh.triangles = retryTris;
+                    }
                 }
-                else if (newNbV > oldNbV)
+                else
                 {
-                    m_sofaMeshAPI.updateMesh(m_mesh);
-                    m_mesh.triangles = m_sofaMeshAPI.createTriangulation();
+                    m_mesh.triangles = tris;
                 }
                 //if (m_invertNormals)
                 //{
@@ -149,7 +167,59 @@ namespace SofaUnity
                 //    m_sofaContext.breakerProcedure();
                 m_sofaMeshAPI.updateMesh(m_mesh);
             }
+            // Safety: if triangles were cleared by any side-effect, try to restore them
+            if (m_mesh.triangles == null || m_mesh.triangles.Length == 0)
+            {
+                var facesCount = m_sofaMeshAPI.GetNumberOfFaces();
+                if (facesCount > 0)
+                {
+                    var tris = m_sofaMeshAPI.createTriangulation();
+                    int vCount = (m_mesh.vertices != null) ? m_mesh.vertices.Length : 0;
+                    if (!AreTrianglesValid(tris, vCount))
+                    {
+                        var sanitized = SanitizeTriangles(tris, vCount);
+                        m_mesh.triangles = sanitized ?? System.Array.Empty<int>();
+                    }
+                    else
+                    {
+                        m_mesh.triangles = tris;
+                    }
+                }
+            }
             m_mesh.RecalculateBounds();
+        }
+
+        private bool AreTrianglesValid(int[] tris, int vertexCount)
+        {
+            if (tris == null || vertexCount <= 0) return false;
+            for (int i = 0; i < tris.Length; ++i)
+            {
+                int idx = tris[i];
+                if (idx < 0 || idx >= vertexCount)
+                    return false;
+            }
+            return true;
+        }
+
+        private int[] SanitizeTriangles(int[] tris, int vertexCount)
+        {
+            if (tris == null || tris.Length == 0 || vertexCount <= 0)
+                return System.Array.Empty<int>();
+
+            List<int> valid = new List<int>(tris.Length);
+            for (int i = 0; i + 2 < tris.Length; i += 3)
+            {
+                int a = tris[i];
+                int b = tris[i + 1];
+                int c = tris[i + 2];
+                if (a >= 0 && a < vertexCount && b >= 0 && b < vertexCount && c >= 0 && c < vertexCount)
+                {
+                    valid.Add(a);
+                    valid.Add(b);
+                    valid.Add(c);
+                }
+            }
+            return (valid.Count > 0) ? valid.ToArray() : System.Array.Empty<int>();
         }
 
 
