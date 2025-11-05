@@ -7702,7 +7702,7 @@ MonoBehaviour:
     enabled: 1
   collisionConstraintParameters:
     evaluationOrder: 0
-    iterations: 20
+    iterations: 30
     SORFactor: 1
     enabled: 1
   frictionConstraintParameters:
