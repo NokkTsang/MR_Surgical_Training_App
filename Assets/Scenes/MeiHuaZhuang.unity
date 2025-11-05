@@ -1416,6 +1416,8 @@ MonoBehaviour:
   _interactableTags:
   - GrabbableSphere
   _showTagDebugInfo: 0
+  _enableRopeDetection: 1
+  _ropeCheckFrequency: 30
   _animationDuration: 0.15
   _animationCurve:
     serializedVersion: 2
@@ -3001,6 +3003,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   parentForceps: {fileID: 374235155}
+  showTriggerDebug: 1
 --- !u!65 &751335231
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -5669,6 +5672,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   parentForceps: {fileID: 374235155}
+  showTriggerDebug: 1
 --- !u!65 &1466294326
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6478,7 +6482,7 @@ Transform:
   m_GameObject: {fileID: 1860332254}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1.1769319, y: -0.21629632, z: -0.48688436}
+  m_LocalPosition: {x: -1.1769319, y: -0.21629632, z: -0.4565}
   m_LocalScale: {x: 0.02, y: 1, z: 0.05}
   m_ConstrainProportionsScale: 0
   m_Children: []
