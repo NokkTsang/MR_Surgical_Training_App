@@ -2,11 +2,6 @@
 
 ### *Extended Reality Surgical Training with Computer Vision*
 
-[![Unity](https://img.shields.io/badge/Unity-2022.3_LTS-black?logo=unity)](https://unity.com/)
-[![Meta Quest](https://img.shields.io/badge/Meta_Quest-3-blue)](https://www.meta.com/quest/)
-[![OpenCV](https://img.shields.io/badge/OpenCV-ArUco-green?logo=opencv)](https://opencv.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 <p align="left">
 <a href="https://www.meta.com/quest/"><img width="500" src="Source\image.png" alt="Meta Quest"></a>
 </p>
